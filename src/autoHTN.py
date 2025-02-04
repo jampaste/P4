@@ -33,12 +33,31 @@ def declare_methods (data):
 def make_operator (rule):
 	def operator (state, ID):
 		# your code here
-		pass
+		#Reqs = string, rule['Requires'][Reqs] = int
+		for Reqs in rule['Requires'] if 'Requires' in rule else []:
+			if(rule['Requires'][Reqs] < getattr(state, Reqs)[ID]):
+				return False
+		for Eats in rule['Consumes'] if 'Consumes' in rule else []:
+			if(rule['Consumes'][Eats] < getattr(state, Eats)[ID]):
+				return False
+		for Eats in rule['Consumes'] if 'Consumes' in rule else []:	
+			setattr(state, Eats, {ID: getattr(state, Eats) - rule['Consumes'][Eats]})
+		for Material in rule['Produces'] if 'Produces' in rule else []:
+			setattr(state, Material, {ID: getattr(state, Material) + rule['Produces'][Material]})
+			break
+		setattr(state, 'time', (getattr(state, 'time') - rule["Time"]))
+		return state
+		
 	return operator
 
 def declare_operators (data):
 	# your code here
 	# hint: call make_operator, then declare the operator to pyhop using pyhop.declare_operators(o1, o2, ..., ok)
+	ID = 'agent'
+	for op in data['Recipes']:
+		#print(data['Recipes'][op]) #this prints the dict {'Produces': {'wood': 1}, 'Requires': {'iron_axe': 1}, 'Time': 1}, .... {'Produces': {'ingot': 1}, 'Requires': {'furnace': 1}, 'Consumes': {'coal': 1, 'ore': 1}, 'Time': 5}
+		new_op = make_operator(data['Recipes'][op])
+		pyhop.declare_operators(new_op)
 	pass
 
 def add_heuristic (data, ID):
