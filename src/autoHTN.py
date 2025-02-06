@@ -15,8 +15,8 @@ pyhop.declare_methods('have_enough', check_enough, produce_enough)
 
 def produce(state, ID, item):
     """Ensure an item is produced if it's not already available."""
-    if item in state.__dict__ and state.__dict__[item][ID] > 0:
-        return []  # Item already available, no need to produce
+    #if item in state.__dict__ and state.__dict__[item][ID] > 0: #does not work when you need multiple of it. rails need 6 ingots. 
+    #    return []  # Item already available, no need to produce
     return [('produce_{}'.format(item), ID)]
 
 pyhop.declare_methods('produce', produce)
@@ -55,17 +55,18 @@ def make_operator(rule):
         if 'Requires' in rule:
             for req in rule['Requires']:
                 if state.__dict__.get(req, {}).get(ID, 0) < rule['Requires'][req]:
-                    print(f"Checking requirements for {ID}: {state.__dict__.get(req, {})}")
+                    #print(f"Checking requirements for {ID}: {state.__dict__.get(req, {})}")
                     return False  # Missing requirement
         
         if 'Consumes' in rule:
             for consume in rule['Consumes']:
                 if state.__dict__.get(consume, {}).get(ID, 0) < rule['Consumes'][consume]:
                     return False  # Not enough items to consume
+            for consume in rule['Consumes']: #seperated so that it will only remove if it never returns false.
                 state.__dict__[consume][ID] -= rule['Consumes'][consume]
         
         for produce in rule['Produces']:
-            state.__dict__.setdefault(produce, {ID: 0})
+            #state.__dict__.setdefault(produce, {ID: 0}) 
             state.__dict__[produce][ID] += rule['Produces'][produce]
         
         if 'Time' in rule:
@@ -101,13 +102,29 @@ def add_heuristic(data, ID):
         if state.time[ID] <= 0:
             return True  # Prune branches where time runs out
         
-        if calling_stack.count(curr_task) > 2:  # Allow one recursion but prevent infinite loops
-            return True  
+		
+        if(len(calling_stack) > 10):
+            if calling_stack[-10:].count(curr_task) > 2:
+                 return True #if same task happens 3 times, its probably infinite recursion.
+                 
+        if(len(tasks) / 2 > state.time[ID]): 
+            return True
+
+        #if():
+        #    return True
+        
+		
+             
+        for tool in data['Tools']:#DO NOT MAKE MORE THAN 1 TOOL
+            if getattr(state, tool)[ID] > 1:
+                return True
+            
+	
+		
         
         return False
     
     pyhop.add_check(heuristic)
-
 
 def set_up_state(data, ID, time=0):
     """Initialize the starting state from JSON data."""
@@ -133,7 +150,7 @@ if __name__ == '__main__':
 	with open(rules_filename) as f:
 		data = json.load(f)
 
-	state = set_up_state(data, 'agent', time=239) # allot time here
+	state = set_up_state(data, 'agent', time=100) # allot time here
 	goals = set_up_goals(data, 'agent')
 
 	declare_operators(data)
@@ -145,5 +162,8 @@ if __name__ == '__main__':
 
 	#Hint: verbose output can take a long time even if the solution is correct; 
 	 #try verbose=1 if it is taking too long
-	pyhop.pyhop(state, goals, verbose=3)
-	#pyhop.pyhop(state, [('have_enough', 'agent', 'cart', 1),('have_enough', 'agent', 'rail', 20)], verbose=3)
+	#pyhop.pyhop(state, goals, verbose=3)	
+	#pyhop.pyhop(state, [('have_enough', 'agent', 'wooden_axe', 1), ('have_enough', 'agent', 'wooden_pickaxe', 1)], verbose=3)
+	pyhop.pyhop(state, [('have_enough', 'agent', 'ingot', 3)], verbose=3)
+	#pyhop.pyhop(state, [('have_enough', 'agent', 'cart', 1),('have_enough', 'agent', 'rail', 20)], verbose=1)
+	#pyhop.pyhop(state, [('have_enough', 'agent', 'cart', 1),('have_enough', 'agent', 'rail', 10)], verbose=3)
